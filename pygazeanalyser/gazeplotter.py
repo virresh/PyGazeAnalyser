@@ -183,7 +183,7 @@ def draw_heatmap(fixations, dispsize, imagefile=None, durationweight=True, alpha
 	"""
 
 	# FIXATIONS
-	fix = parse_fixations(fixations)
+	fix = parse_fixations(fixations, *dispsize)
 	
 	# IMAGE
 	fig, ax = draw_display(dispsize, imagefile=imagefile)
@@ -191,10 +191,10 @@ def draw_heatmap(fixations, dispsize, imagefile=None, durationweight=True, alpha
 	# HEATMAP
 	# Gaussian
 	gwh = 200
-	gsdwh = gwh/6
+	gsdwh = gwh//6
 	gaus = gaussian(gwh,gsdwh)
 	# matrix of zeroes
-	strt = gwh/2
+	strt = gwh//2
 	heatmapsize = dispsize[1] + 2*strt, dispsize[0] + 2*strt
 	heatmap = numpy.zeros(heatmapsize, dtype=float)
 	# create heatmap
@@ -230,9 +230,10 @@ def draw_heatmap(fixations, dispsize, imagefile=None, durationweight=True, alpha
 	heatmap = heatmap[strt:dispsize[1]+strt,strt:dispsize[0]+strt]
 	# remove zeros
 	lowbound = numpy.mean(heatmap[heatmap>0])
-	heatmap[heatmap<lowbound] = numpy.NaN
+	if not numpy.isnan(lowbound):
+		heatmap[heatmap<lowbound] = numpy.NaN
 	# draw heatmap on top of image
-	ax.imshow(heatmap, cmap='jet', alpha=alpha)
+	ax.imshow(heatmap, cmap='jet', alpha=alpha, zorder=10)
 
 	# FINISH PLOT
 	# invert the y axis, as (0,0) is top left on a display
@@ -381,12 +382,12 @@ def draw_display(dispsize, imagefile=None):
 	"""
 	
 	# construct screen (black background)
-	_, ext = os.path.splitext(imagefile)
-	ext = ext.lower()
-	data_type = 'float32' if ext == '.png' else 'uint8'
-	screen = numpy.zeros((dispsize[1],dispsize[0],3), dtype=data_type)
+	screen = numpy.zeros((dispsize[1], dispsize[0], 3), dtype='uint8')
 	# if an image location has been passed, draw the image
 	if imagefile != None:
+		_, ext = os.path.splitext(imagefile)
+		ext = ext.lower()
+		data_type = 'float32' if ext == '.png' else 'uint8'
 		# check if the path to the image exists
 		if not os.path.isfile(imagefile):
 			raise Exception("ERROR in draw_display: imagefile not found at '%s'" % imagefile)
@@ -452,7 +453,7 @@ def gaussian(x, sx, y=None, sy=None):
 	return M
 
 
-def parse_fixations(fixations):
+def parse_fixations(fixations, disp_x=1, disp_y=1):
 	
 	"""Returns all relevant data from a list of fixation ending events
 	
@@ -476,8 +477,8 @@ def parse_fixations(fixations):
 	# get all fixation coordinates
 	for fixnr in range(len( fixations)):
 		stime, etime, dur, ex, ey = fixations[fixnr]
-		fix['x'][fixnr] = ex
-		fix['y'][fixnr] = ey
+		fix['x'][fixnr] = ex * disp_x
+		fix['y'][fixnr] = ey * disp_y
 		fix['dur'][fixnr] = dur
 	
 	return fix
